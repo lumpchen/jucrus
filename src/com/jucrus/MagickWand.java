@@ -9,38 +9,34 @@ import com.jucrus.magick.NativeIM;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 
-public class CanvasBuilder {
+public class MagickWand {
 	static NativeIM magick = NativeIM.instance;
 	
 	private Pointer wand;
 	private int width;
 	private int height;
+	private int alpha; 
+	private BufferedImage peerImage;
 	
-	public CanvasBuilder() {
+	public MagickWand() {
 		magick.MagickWandGenesis();
 	}
 	
-	public Canvas build(String path) {
+	public boolean readImage(String path) {
 		this.wand = magick.NewMagickWand();
-		
 		int status = magick.MagickReadImage(wand, path);
 		if (Magick.MagickBooleanType.MagickFalse == status) {
-			return null;
-		} else {
-			return this.repaint();
+			return false;
 		}
-	}
-	
-	private Canvas repaint() {
+		
 		this.width = magick.MagickGetImageWidth(wand);
 		this.height = magick.MagickGetImageHeight(wand);
-		int alpha = magick.MagickGetImageAlphaChannel(wand);
+		this.alpha = magick.MagickGetImageAlphaChannel(wand);
 		
-		Canvas canvas = null;
 		if (alpha > 0) {
-			canvas = new Canvas(width, height, BufferedImage.TYPE_INT_ARGB);
+			this.peerImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 		} else {
-			canvas = new Canvas(width, height, BufferedImage.TYPE_INT_RGB);
+			this.peerImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		}
 		
 		Pointer pixelIterator = magick.NewPixelIterator(wand);
@@ -49,14 +45,47 @@ public class CanvasBuilder {
 		for (int i = 0; i < height; i++) {
 			Pointer[] pixels = magick.PixelGetNextIteratorRow(pixelIterator, pWidth);
 			int[] rowPixels = getRowPixels(pixels, width, alpha);
-			canvas.setRowPixels(i, rowPixels);
+			for (int j = 0; j < width; j++) {
+				this.peerImage.setRGB(j, i, rowPixels[j]);				
+			}
 		}
-		return canvas;
+		return true;
+	}
+	
+	public BufferedImage peerImage() {
+		return this.peerImage;
 	}
 	
 	public void destroy() {
 		magick.DestroyMagickWand(wand);
 		magick.MagickWandTerminus();		
+	}
+	
+	private void update() {
+		int w = magick.MagickGetImageWidth(wand);
+		int h = magick.MagickGetImageHeight(wand);
+		int a = magick.MagickGetImageAlphaChannel(wand);
+
+		if (w != this.width || h != this.height || a != this.alpha) {
+			this.width = w;
+			this.height = h;
+			this.alpha = a;
+			if (alpha > 0) {
+				this.peerImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+			} else {
+				this.peerImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+			}
+		}
+		
+		Pointer pixelIterator = magick.NewPixelIterator(wand);
+		IntByReference pWidth = new IntByReference();
+		for (int i = 0; i < height; i++) {
+			Pointer[] pixels = magick.PixelGetNextIteratorRow(pixelIterator, pWidth);
+			int[] rowPixels = getRowPixels(pixels, width, alpha);
+			for (int j = 0; j < width; j++) {
+				this.peerImage.setRGB(j, i, rowPixels[j]);				
+			}
+		}
 	}
 	
 	private int[] getRowPixels(Pointer[] pixels, int w, int alpha) {
@@ -80,9 +109,9 @@ public class CanvasBuilder {
 		return rowPixels;
 	}
 	
-	public Canvas polynomial() {
+	public boolean polynomial() {
 		if (this.wand == null) {
-			return null;
+			return false;
 		}
 		double arglist[] = { 0, 0,
 				// RGB black
@@ -107,17 +136,21 @@ public class CanvasBuilder {
 	    // -set option:compose:args 15
 	    if (magick.MagickSetImageArtifact(clonedWand, "compose:args", "15") == 0) {
 	        clonedWand = magick.DestroyMagickWand(clonedWand);
-	        return null;
+	        return false;
 	    }
 	    
 	    magick.MagickCompositeImage(this.wand, clonedWand, 57, 0, 0);
 	    
 	    clonedWand = magick.DestroyMagickWand(clonedWand);
 	    
-	    return this.repaint();
+	    this.update();
+	    return true;
 	}
 	
-	public Canvas drawText(String text) {
+	public boolean drawText(String text) {
+		if (this.wand == null) {
+			return false;
+		}
 		Pointer drawWand = magick.NewDrawingWand();
 		Pointer pixelWand = magick.NewPixelWand();
 		
@@ -127,7 +160,6 @@ public class CanvasBuilder {
 		magick.DrawSetFontSize(drawWand, 72);
 		magick.DrawSetOpacity(drawWand, 0.4);
 		magick.DrawSetTextEncoding(drawWand, "UTF-8");
-		System.out.println(magick.DrawGetTextEncoding(drawWand));
 		
 		magick.DrawAnnotation(drawWand, 25, 65, text);
 		
@@ -140,5 +172,7 @@ public class CanvasBuilder {
 		if (pixelWand != null) {
 			magick.DestroyPixelWand(pixelWand);
 		}
-		return this.repaint();
+		this.update();
+		
+		return true;
 	}}
