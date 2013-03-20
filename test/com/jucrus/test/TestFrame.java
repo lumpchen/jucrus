@@ -32,7 +32,7 @@ public class TestFrame extends JFrame {
 
 		this.wand = new MagickWand();
 		this.canvasPanel = new ImageCanvas(this.wand);
-		
+
 		container.add(this.canvasPanel);
 
 		JPanel panel = new JPanel();
@@ -43,7 +43,7 @@ public class TestFrame extends JFrame {
 		this.openButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				canvasPanel.openImage(Util.getTestFile("610px-TUX-G2-SVG.svg.png"));
+				canvasPanel.openImage(Util.getTestFile("redapple.png"));
 			}
 		});
 
@@ -51,7 +51,9 @@ public class TestFrame extends JFrame {
 		this.actionButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				canvasPanel.drawText("jucrus");
+				canvasPanel.drawPolygon();
+//				canvasPanel.clipRoundRectangle();
+				// canvasPanel.drawText("jucrus");
 				// canvasPanel.polynomial();
 				canvasPanel.repaint();
 			}
@@ -63,11 +65,12 @@ public class TestFrame extends JFrame {
 
 		this.addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent e) {
+				wand.destroy();
 				System.exit(0);
 			}
 		});
 
-		this.setSize(600, 480);
+		this.setSize(800, 600);
 		this.setVisible(true);
 	}
 

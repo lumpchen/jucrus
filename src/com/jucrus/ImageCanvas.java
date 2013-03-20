@@ -11,8 +11,6 @@ public class ImageCanvas extends JPanel {
 	private static final long serialVersionUID = -6809019436082398263L;
 
 	private MagickWand wand;
-	private int imageWidth;
-	private int imageHeight;
 	private BufferedImage image;
 
 	public ImageCanvas(MagickWand wand) {
@@ -41,7 +39,23 @@ public class ImageCanvas extends JPanel {
 			// failed message
 		}
 	}
+
+	public void clipRoundRectangle() {
+		if (this.wand.clipRoundRectangle()) {
+			this.updateImage();
+		} else {
+			// failed message
+		}
+	}
 	
+	public void drawPolygon() {
+		if (this.wand.drawPolygon()) {
+			this.updateImage();
+		} else {
+			// failed message
+		}
+	}
+
 	private void updateImage() {
 		this.image = this.wand.peerImage();
 		this.repaint();
@@ -57,7 +71,15 @@ public class ImageCanvas extends JPanel {
 		if (this.image != null) {
 			int iw = this.image.getWidth();
 			int ih = this.image.getHeight();
-			g2.drawImage(this.image, 0, 0, null);
+
+			int sx = 0, sy = 0;
+			if (width > iw) {
+				sx = (width - iw) / 2;
+			}
+			if (height > ih) {
+				sy = (height - ih) / 2;
+			}
+			g2.drawImage(this.image, sx, sy, null);
 		}
 	}
 }
